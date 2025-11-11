@@ -1,8 +1,8 @@
+// proxy.ts
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
     const res = NextResponse.next();
 
     const supabase = createServerClient(
@@ -21,8 +21,15 @@ export async function middleware(req: NextRequest) {
         }
     );
 
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
+    // Uzimamo user-a (bez pucanja na error)
+    let user = null;
+    try {
+        const { data } = await supabase.auth.getUser();
+        user = data?.user ?? null;
+    } catch {
+        // ignoriraj; tretiraj kao neregistrovanog
+    }
+
     const pathname = req.nextUrl.pathname;
 
     if (!user && pathname.startsWith("/dashboard")) {
@@ -36,6 +43,16 @@ export async function middleware(req: NextRequest) {
     return res;
 }
 
+// Ostaje isto kao i ranije
 export const config = {
-    matcher: ["/", "/login", "/dashboard/:path*", "/objave/:path*", "/pretraga/:path*", "/treneri/:path*", "/treninzi/:path*", "/profil/:path*"],
+    matcher: [
+        "/",
+        "/login",
+        "/dashboard/:path*",
+        "/objave/:path*",
+        "/pretraga/:path*",
+        "/treneri/:path*",
+        "/treninzi/:path*",
+        "/profil/:path*",
+    ],
 };
