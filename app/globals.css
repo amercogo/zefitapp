@@ -27,3 +27,7 @@ body {
 .pill {
   border-radius: var(--radius-pill);
 }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
