@@ -9,18 +9,39 @@ import {
     CartesianGrid,
     ResponsiveContainer,
 } from "recharts";
+import { useState } from "react";
 
 export type AttendancePoint = {
-    date: string;    // npr. "Nov 10" ili "10.11."
-    count: number;   // broj dolazaka taj dan
+    date: string;   // npr. "2025-11-10"
+    count: number;  // broj dolazaka
+};
+
+export type PaymentPoint = {
+    date: string;   // npr. "2025-11-10"
+    amount: number; // iznos uplata tog dana
 };
 
 type Props = {
-    data: AttendancePoint[];
+    attendanceData: AttendancePoint[];
+    paymentData: PaymentPoint[];
 };
 
-export function AttendanceChart({data}: Props) {
-    const hasData = data && data.length > 0;
+export function AttendanceChart({ attendanceData, paymentData }: Props) {
+    const [activeTab, setActiveTab] = useState<"attendance" | "payments">(
+        "attendance",
+    );
+
+    const hasAttendance = attendanceData && attendanceData.length > 0;
+    const hasPayments = paymentData && paymentData.length > 0;
+
+    const isAttendance = activeTab === "attendance";
+
+    // Normaliziramo podatke na { date, value }
+    const chartData = isAttendance
+        ? attendanceData.map((d) => ({ date: d.date, value: d.count }))
+        : paymentData.map((d) => ({ date: d.date, value: d.amount }));
+
+    const hasData = chartData.length > 0;
 
     return (
         <section
@@ -41,21 +62,29 @@ export function AttendanceChart({data}: Props) {
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
                     <button
                         type="button"
-                        className="
-              px-3 py-1.5 rounded-full
-              bg-[var(--color-yellow)] text-black
-              shadow-[0_8px_18px_rgba(0,0,0,0.7)]
-            "
+                        onClick={() => setActiveTab("attendance")}
+                        className={`
+              px-3 py-1.5 rounded-full transition
+              ${
+                            isAttendance
+                                ? "bg-[var(--color-yellow)] text-black shadow-[0_8px_18px_rgba(0,0,0,0.7)]"
+                                : "bg-black/60 text-white/45 border border-white/10 hover:bg-white/10"
+                        }
+            `}
                     >
                         Dolasci
                     </button>
                     <button
                         type="button"
-                        className="
-              px-3 py-1.5 rounded-full
-              bg-black/60 text-white/45 border border-white/10
-              cursor-default
-            "
+                        onClick={() => setActiveTab("payments")}
+                        className={`
+              px-3 py-1.5 rounded-full transition
+              ${
+                            !isAttendance
+                                ? "bg-[var(--color-yellow)] text-black shadow-[0_8px_18px_rgba(0,0,0,0.7)]"
+                                : "bg-black/60 text-white/45 border border-white/10 hover:bg-white/10"
+                        }
+            `}
                     >
                         Uplate
                     </button>
@@ -66,7 +95,10 @@ export function AttendanceChart({data}: Props) {
             <div className="h-64 w-full rounded-xl bg-black/40 border border-white/10 px-2 py-3">
                 {hasData ? (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{top: 12, right: 24, left: 0, bottom: 8}}>
+                        <LineChart
+                            data={chartData}
+                            margin={{ top: 12, right: 24, left: 0, bottom: 8 }}
+                        >
                             <CartesianGrid
                                 stroke="rgba(255,255,255,0.08)"
                                 strokeDasharray="3 3"
@@ -75,14 +107,14 @@ export function AttendanceChart({data}: Props) {
                             <XAxis
                                 dataKey="date"
                                 stroke="#AAAAAA"
-                                tick={{fontSize: 11, fill: "#DDDDDD"}}
+                                tick={{ fontSize: 11, fill: "#DDDDDD" }}
                                 tickLine={false}
                             />
                             <YAxis
                                 stroke="#AAAAAA"
-                                tick={{fontSize: 11, fill: "#DDDDDD"}}
+                                tick={{ fontSize: 11, fill: "#DDDDDD" }}
                                 tickLine={false}
-                                width={32}
+                                width={40}
                             />
                             <Tooltip
                                 contentStyle={{
@@ -91,16 +123,29 @@ export function AttendanceChart({data}: Props) {
                                     border: "1px solid rgba(255,245,47,0.4)",
                                     padding: "8px 10px",
                                 }}
-                                labelStyle={{color: "#ffffff", fontSize: 12}}
-                                itemStyle={{color: "#FFF52F", fontSize: 12}}
-                                cursor={{stroke: "rgba(255,255,255,0.15)", strokeWidth: 1}}
+                                labelStyle={{ color: "#ffffff", fontSize: 12 }}
+                                itemStyle={{ color: "#FFF52F", fontSize: 12 }}
+                                formatter={(value: number) =>
+                                    isAttendance
+                                        ? [`${value} dolazaka`, "Dolasci"]
+                                        : [`${value.toFixed(2)} KM`, "Uplate"]
+                                }
+                                cursor={{
+                                    stroke: "rgba(255,255,255,0.15)",
+                                    strokeWidth: 1,
+                                }}
                             />
                             <Line
                                 type="monotone"
-                                dataKey="count"
-                                stroke="#FFF52F" // ZeFIT žuta
+                                dataKey="value"
+                                stroke="#FFF52F"
                                 strokeWidth={3}
-                                dot={{r: 4, stroke: "#000000", strokeWidth: 1, fill: "#FFF52F"}}
+                                dot={{
+                                    r: 4,
+                                    stroke: "#000000",
+                                    strokeWidth: 1,
+                                    fill: "#FFF52F",
+                                }}
                                 activeDot={{
                                     r: 6,
                                     stroke: "#ffffff",
@@ -112,10 +157,19 @@ export function AttendanceChart({data}: Props) {
                     </ResponsiveContainer>
                 ) : (
                     <div className="h-full flex items-center justify-center text-sm text-white/60">
-                        Nema dolazaka u odabranom periodu.
+                        {isAttendance
+                            ? "Nema dolazaka u odabranom periodu."
+                            : "Nema uplata u odabranom periodu."}
                     </div>
                 )}
             </div>
+
+            {/* Kratki hint ispod, opcionalno */}
+            <p className="mt-2 text-[11px] text-white/45">
+                {isAttendance
+                    ? "Broj dolazaka po danu."
+                    : "Ukupan iznos uplata po danu (KM)."}
+            </p>
         </section>
     );
 }
